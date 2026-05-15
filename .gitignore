@@ -1,0 +1,4 @@
+# Personal CV files
+*.docx
+*.pdf
+backend/app/tools/my_cv.md
