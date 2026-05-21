@@ -1,0 +1,12 @@
+Write:
+1) a short profile (3-5 lines)
+2) a concise cover letter
+
+Cover letter structure:
+- Motivation for role and company
+- Matching skills and experience
+- Closing statement
+
+Rules:
+- no hallucination
+- only evidence-backed claims

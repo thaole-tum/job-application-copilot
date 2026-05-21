@@ -1,3 +1,27 @@
+# IDE
+.idea/
+.vscode/
+
+# Virtual environments
+.venv/
+.venv-wsl/
+venv/
+
+# Python cache/build
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+.pytest_cache/
+.mypy_cache/
+
+# Environment files
+.env
+
+# Project runtime output
+outputs/
+
 # Personal CV files
 *.docx
 *.pdf

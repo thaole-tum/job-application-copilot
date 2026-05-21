@@ -1,70 +1,61 @@
-from app.tools.job_parser import scrape_job
-from app.tools.cv_tool import load_cv
+from app.agents import (
+    analyze_compatibility,
+    analyze_job_context,
+    review_and_improve_draft,
+    write_application_draft,
+)
+from app.db.client import save_run_payload
 from app.llm.client import call_llm
+from app.rag import SimpleRAGRetriever, format_context_blocks
+from app.tools.cover_letter_tool import extract_sections
+from app.tools.cv_tool import load_cv
+from app.tools.job_parser import scrape_job
+
 
 def build_application(job_url: str):
     job_text = scrape_job(job_url)
     cv_text = load_cv()
 
-    prompt_analysis = f"""
-You are a professional recruiter in Germany.
+    retriever = SimpleRAGRetriever(chunk_size=900, overlap=150)
+    retriever.add_document("job_description", job_text)
+    retriever.add_document("cv", cv_text)
 
-Goal: Analyze this job:
+    analysis_context = format_context_blocks(
+        retriever.retrieve(
+            "job requirements responsibilities key skills ideal candidate profile",
+            top_k=4,
+        )
+    )
+    job_analysis = analyze_job_context(analysis_context, call_llm)
 
-{job_text[:6000]}
+    match_context = format_context_blocks(
+        retriever.retrieve(
+            f"{job_analysis}\ncompatibility missing skills strongest matches CV evidence",
+            top_k=5,
+        )
+    )
+    compatibility_analysis = analyze_compatibility(job_analysis, match_context, call_llm)
 
-Extract:
-- key skills
-- responsibilities
-- ideal candidate profile
-"""
+    writing_context = format_context_blocks(
+        retriever.retrieve(
+            f"{compatibility_analysis}\nwrite profile and cover letter based on CV-backed evidence only",
+            top_k=5,
+        )
+    )
+    draft = write_application_draft(compatibility_analysis, writing_context, call_llm)
+    final_result = review_and_improve_draft(draft, cv_text[:7000], call_llm)
 
-    job_analysis = call_llm(prompt_analysis)
+    short_profile, cover_letter = extract_sections(final_result)
 
-    prompt_match = f"""
-You are a professional tech career coach in the field of data science, data analytics, AI, Machine Learning, Business Analyst.
+    payload = {
+        "job_url": job_url,
+        "job_analysis": job_analysis,
+        "compatibility_analysis": compatibility_analysis,
+        "short_profile": short_profile,
+        "cover_letter": cover_letter,
+        "final_result": final_result,
+    }
+    output_path = save_run_payload(payload)
+    print(f"\nSaved structured output to: {output_path}")
 
-Goal: Compare CV and job to see the compatibility.
-
-JOB:
-{job_analysis}
-
-CV:
-{cv_text}
-
-Return:
-1. compatibility score (0-100)
-2. missing skills
-3. strongest matches
-"""
-
-    match = call_llm(prompt_match)
-
-    prompt_output = f"""
-Based on this analysis:
-
-{match}
-
-And this CV:
-{cv_text}
-
-Write:
-1. Short professional self-introduction profile in english (3-5 lines)
-2. Cover letter in English (concise, tailored) and based the compatable skills and experiences in the CV with the core skills in the job description.
-
-Rule: Do not hallucinate and generate fake skills that are not mentioned in the CV.
-"""
-
-    result = call_llm(prompt_output)
-
-    os.makedirs("outputs", exist_ok=True)
-
-    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    filename = f"outputs/job_application_{timestamp}.txt"
-
-    with open(filename, "w", encoding="utf-8") as f:
-        f.write(result)
-
-    print(f"\n✅ Saved output to: {filename}")
-
-    return result 
+    return final_result

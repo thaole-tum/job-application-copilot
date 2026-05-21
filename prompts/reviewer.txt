@@ -1,0 +1,9 @@
+Review the application draft for:
+- factual correctness vs CV
+- role fit clarity
+- concise and professional tone
+- grammar and structure quality
+
+Return:
+- improved final draft
+- short review notes
