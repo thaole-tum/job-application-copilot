@@ -9,8 +9,6 @@ An AI-assisted backend project that:
    - a tailored short profile (3-5 lines),
    - a structured motivation-focused cover letter.
 
-This project is designed as a practical portfolio example for applied NLP/LLM engineering workflows.
-
 ## Features
 
 - URL job description scraping with fallback dummy mode
